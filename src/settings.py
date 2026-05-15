@@ -2,7 +2,11 @@
 
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 700
+WORLD_WIDTH = 1447
+WORLD_HEIGHT = 1087
 
+DAY_MAP_PATH = "assets/images/maps/day_map.png"
+NIGHT_MAP_PATH = "assets/images/maps/night_map.png"
 FPS = 60
 # цвета
 BLACK = (0, 0, 0)
@@ -22,3 +26,10 @@ NPC_COLOR = (200, 180, 90)
 BLACK = (0, 0, 0)
 INTERACTION_DISTANCE = 70
 NPC_SPEED = 2
+PANEL_COLOR = (25, 25, 25)
+PANEL_BORDER = (220, 220, 220)
+DAY_TIME = 60
+NIGHT_TIME = 45
+DAY = "DAY"
+NIGHT = "NIGHT"
+YELLOW = (240, 220, 90)

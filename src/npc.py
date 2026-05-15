@@ -7,8 +7,8 @@ from .settings import (
     RED,
     INTERACTION_DISTANCE,
     NPC_SPEED,
-    SCREEN_WIDTH,
-    SCREEN_HEIGHT,
+    WORLD_WIDTH,
+    WORLD_HEIGHT,
 )
 class NPC:
     def __init__(self, name,x, y, is_criminal=False):
@@ -32,12 +32,12 @@ class NPC:
 
         if self.rect.left < 0:
             self.rect.left = 0
-        if self.rect.right > SCREEN_WIDTH:
-            self.rect.right = SCREEN_WIDTH
+        if self.rect.right > WORLD_WIDTH:
+            self.rect.right = WORLD_WIDTH
         if self.rect.top < 0:
             self.rect.top = 0
-        if self.rect.bottom > SCREEN_HEIGHT:
-            self.rect.bottom = SCREEN_HEIGHT
+        if self.rect.bottom > WORLD_HEIGHT:
+            self.rect.bottom = WORLD_HEIGHT
     def scan(self):
         self.is_scanned = True
     def is_near_player(self, player):
@@ -49,10 +49,12 @@ class NPC:
         elif self.is_criminal:
             return RED
         return GREEN
-    def draw(self, screen, font):
-        pygame.draw.rect(screen, NPC_COLOR, self.rect)
+    def draw(self, screen, font, camera_x, camera_y):
+        draw_rect = self.rect.move(-camera_x, -camera_y)
+
+        pygame.draw.rect(screen, NPC_COLOR, draw_rect)
         name_color = self.get_name_color()
         name_text = font.render(self.name, True, name_color)
-        text_x = self.rect.centerx - name_text.get_width() // 2
-        text_y = self.rect.top - name_text.get_height() - 5
+        text_x = draw_rect.centerx - name_text.get_width() // 2
+        text_y = draw_rect.y - 22
         screen.blit(name_text, (text_x, text_y))
