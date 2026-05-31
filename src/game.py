@@ -1,4 +1,3 @@
-import random
 import time
 
 import pygame
@@ -6,7 +5,6 @@ from .settings import (
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
     FPS,
-    BLACK,
     WHITE,
     YELLOW,
     GREEN,
@@ -14,63 +12,18 @@ from .settings import (
     WORLD_WIDTH,
     WORLD_HEIGHT,
     MAX_NIGHTS,
-    NPCS_PER_DAY,
-    SUSPICION_MAX,
     SUSPICION_TIME,
     EVIDENCE_SUSPICION_TIME,
-    DAY_TEXT_TIME,
-    INTRO_TEXT_SPEED,
 )
 from .player import Player
 from .world import World
-from .npc import NPC
 from .ui import ScannerUI
 from .daynight import DayNightManager
 from .objects import House, Boat, Evidence
-
-
-NPC_NAMES = [
-    "Mark", "Anna", "Leo", "Kate", "Nick",
-    "Alex", "Mia", "John", "Sara", "Tom",
-    "Eva", "Max", "Nina", "Oleg", "Ira",
-    "Paul", "Liza", "Dan", "Sofia", "Eric",
-    "Mila", "Anton", "Vera", "Roman", "Tina",
-]
-
-NPC_POINTS = [
-    (400, 280),
-    (600, 350),
-    (250, 250),
-    (820, 520),
-    (1080, 360),
-]
-
-INTRO_TEXT = (
-    "Эта игра вдохновлена атмосферой сериала Декстер.\n\n"
-    "Ты живешь по кодексу ночи. Днем город кажется спокойным, "
-    "но среди обычных людей каждый день появляется один преступник.\n\n"
-    "Днем подходи к npc и нажимай E, чтобы сканировать их. "
-    "Имя мирного станет зеленым, имя преступника станет красным.\n\n"
-    "Ночью устраняй только просканированного преступника клавишей F. "
-    "После этого забери улику, отнеси ее к яхте и сбрось.\n\n"
-    "Не попадайся в конусы зрения npc ночью. Подозреваемость копится всю игру. "
-    "Если она дойдет до 100%, тебя заметят.\n\n"
-    "Всего есть 5 ночей. Каждую ночь появляются новые 5 npc, "
-    "и среди них один новый преступник.\n\n"
-    "SPACE - пропустить"
-)
-
-OUTRO_TEXT = (
-    "Пять ночей закончились.\n\n"
-    "Майами снова делает вид, что он чист. "
-    "Утром улицы блестят на солнце, люди улыбаются, "
-    "и никто не спрашивает, почему ночь стала такой тихой.\n\n"
-    "Кодекс не делает меня героем. Он просто держит тьму на поводке.\n\n"
-    "Пятеро исчезли. Пять следов ушли в воду. "
-    "Город получил еще один шанс проснуться без страха.\n\n"
-    "Иногда порядок выглядит как обычный рассвет.\n\n"
-    "SPACE - начать заново"
-)
+from .npc_data import create_npcs_for_night
+from .suspicion import Suspicion
+from .story import StoryScreen, INTRO_TEXT, OUTRO_TEXT
+from .day_screen import DayScreen
 
 
 class Game:
@@ -96,17 +49,16 @@ class Game:
         self.carried_evidence = 0
         self.delivered_evidence = 0
         self.criminals_done = 0
-        self.suspicion = 0
+        self.suspicion = Suspicion()
         self.game_over = False
         self.game_finished = False
         self.message = ""
         self.last_time = time.monotonic()
-        self.day_text = ""
-        self.day_text_time = 0
+        self.day_screen = DayScreen()
         self.intro_active = True
-        self.intro_start_time = time.monotonic()
+        self.intro_screen = StoryScreen("кодекс ночи", INTRO_TEXT, "SPACE - начать игру")
         self.outro_active = False
-        self.outro_start_time = 0
+        self.outro_screen = StoryScreen("кодекс ночи", OUTRO_TEXT, "SPACE - начать заново")
         self.spawn_npcs()
 
     def run(self):
@@ -195,7 +147,7 @@ class Game:
     def close_intro(self):
         self.intro_active = False
         self.last_time = time.monotonic()
-        self.show_day_text()
+        self.day_screen.show(self.daynight.night)
 
     def restart_game(self):
         self.player = Player(100, 100)
@@ -205,39 +157,23 @@ class Game:
         self.carried_evidence = 0
         self.delivered_evidence = 0
         self.criminals_done = 0
-        self.suspicion = 0
+        self.suspicion.reset()
         self.game_over = False
         self.game_finished = False
         self.outro_active = False
         self.message = ""
         self.last_time = time.monotonic()
-        self.show_day_text()
+        self.day_screen.show(self.daynight.night)
         self.spawn_npcs()
-
-    def show_day_text(self):
-        self.day_text = f"ДЕНЬ {self.daynight.night}"
-        self.day_text_time = time.monotonic()
 
     def finish_game(self):
         self.game_finished = True
         self.outro_active = True
-        self.outro_start_time = time.monotonic()
+        self.outro_screen.restart()
         self.message = ""
 
     def spawn_npcs(self):
-        start = (self.daynight.night - 1) * NPCS_PER_DAY
-        names = NPC_NAMES[start:start + NPCS_PER_DAY]
-        if not names:
-            self.npcs = []
-            return
-
-        criminal_name = random.choice(names)
-        self.npcs = []
-
-        for index, name in enumerate(names):
-            x, y = NPC_POINTS[index]
-            is_criminal = name == criminal_name
-            self.npcs.append(NPC(name, x, y, is_criminal))
+        self.npcs = create_npcs_for_night(self.daynight.night)
 
     def has_criminal(self):
         for npc in self.npcs:
@@ -262,7 +198,7 @@ class Game:
         if self.daynight.night < MAX_NIGHTS:
             self.daynight.change_phase()
             self.spawn_npcs()
-            self.show_day_text()
+            self.day_screen.show(self.daynight.night)
             self.message = ""
 
     def eliminate_near_criminal(self):
@@ -312,7 +248,7 @@ class Game:
         if self.intro_active or self.outro_active:
             return
 
-        if self.is_day_text_active():
+        if self.day_screen.is_active(self.daynight.is_day()):
             return
 
         self.daynight.update()
@@ -362,10 +298,7 @@ class Game:
         return None, None
 
     def add_suspicion(self, dt, time_limit):
-        self.suspicion += (SUSPICION_MAX / time_limit) * dt
-
-        if self.suspicion >= SUSPICION_MAX:
-            self.suspicion = SUSPICION_MAX
+        if self.suspicion.add(dt, time_limit):
             self.game_over = True
             self.message = "вас заметили"
 
@@ -390,82 +323,9 @@ class Game:
         self.screen.blit(text, (20, 45))
 
     def draw_suspicion_info(self):
-        text = self.font.render(f"Подозреваемость: {int(self.suspicion)}%", True, RED)
+        text = self.font.render(f"Подозреваемость: {self.suspicion.percent()}%", True, RED)
         x = SCREEN_WIDTH - text.get_width() - 20
         self.screen.blit(text, (x, 20))
-
-    def draw_day_text(self):
-        text = self.big_font.render(self.day_text, True, WHITE)
-        x = SCREEN_WIDTH // 2 - text.get_width() // 2
-        y = SCREEN_HEIGHT // 2 - text.get_height() // 2
-        self.screen.blit(text, (x, y))
-
-    def is_day_text_active(self):
-        if not self.day_text:
-            return False
-
-        if not self.daynight.is_day():
-            return False
-
-        return time.monotonic() - self.day_text_time <= DAY_TEXT_TIME
-
-    def draw_day_screen(self):
-        self.screen.fill(BLACK)
-        self.draw_day_text()
-
-    def wrap_text(self, text, font, max_width):
-        lines = []
-        paragraphs = text.split("\n")
-
-        for paragraph in paragraphs:
-            if not paragraph:
-                lines.append("")
-                continue
-
-            words = paragraph.split(" ")
-            line = ""
-            for word in words:
-                test_line = word if not line else line + " " + word
-                if font.size(test_line)[0] <= max_width:
-                    line = test_line
-                else:
-                    lines.append(line)
-                    line = word
-
-            if line:
-                lines.append(line)
-
-        return lines
-
-    def draw_intro(self):
-        self.draw_story_screen("кодекс ночи", INTRO_TEXT, self.intro_start_time, "SPACE - начать игру")
-
-    def draw_outro(self):
-        self.draw_story_screen("кодекс ночи", OUTRO_TEXT, self.outro_start_time, "SPACE - начать заново")
-
-    def draw_story_screen(self, title_text, story_text, start_time, hint_text):
-        self.screen.fill(BLACK)
-
-        title = self.title_font.render(title_text, True, WHITE)
-        title_x = SCREEN_WIDTH // 2 - title.get_width() // 2
-        self.screen.blit(title, (title_x, 70))
-
-        chars_count = int((time.monotonic() - start_time) * INTRO_TEXT_SPEED)
-        visible_text = story_text[:chars_count]
-        if chars_count < len(story_text):
-            visible_text += "|"
-
-        lines = self.wrap_text(visible_text, self.font, 760)
-        y = 155
-        for line in lines:
-            text = self.font.render(line, True, WHITE)
-            self.screen.blit(text, (120, y))
-            y += 28
-
-        if chars_count >= len(story_text):
-            hint = self.font.render(hint_text, True, WHITE)
-            hint_x = SCREEN_WIDTH // 2 - hint.get_width() // 2
-            self.screen.blit(hint, (hint_x, SCREEN_HEIGHT - 55))
 
     def draw_message(self):
         if not self.message:
@@ -519,17 +379,17 @@ class Game:
 
     def draw(self):
         if self.intro_active:
-            self.draw_intro()
+            self.intro_screen.draw(self.screen, self.title_font, self.font)
             pygame.display.flip()
             return
 
         if self.outro_active:
-            self.draw_outro()
+            self.outro_screen.draw(self.screen, self.title_font, self.font)
             pygame.display.flip()
             return
 
-        if self.is_day_text_active():
-            self.draw_day_screen()
+        if self.day_screen.is_active(self.daynight.is_day()):
+            self.day_screen.draw(self.screen, self.big_font)
             pygame.display.flip()
             return
 
