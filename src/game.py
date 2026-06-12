@@ -35,15 +35,15 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
         self.world = World()
-        self.player = Player(100, 100)
+        self.player = Player(135, 135)
         self.font = pygame.font.SysFont("arial", 18)
         self.title_font = pygame.font.SysFont("arial", 46)
         self.big_font = pygame.font.SysFont("arial", 64)
 
         self.scanner_ui = ScannerUI()
         self.daynight = DayNightManager()
-        self.house = House(420, 460, 120, 100)
-        self.boat = Boat(270, 970, 120, 60)
+        self.house = House(567, 621, 162, 135)
+        self.boat = Boat(365, 1310, 162, 81)
         self.npcs = []
         self.evidences = []
         self.carried_evidence = 0
@@ -150,7 +150,7 @@ class Game:
         self.day_screen.show(self.daynight.night)
 
     def restart_game(self):
-        self.player = Player(100, 100)
+        self.player = Player(135, 135)
         self.scanner_ui.close()
         self.daynight = DayNightManager()
         self.evidences = []

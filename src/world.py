@@ -1,6 +1,8 @@
 import pygame
 
 from .settings import WORLD_WIDTH, WORLD_HEIGHT, DAY_MAP_PATH, NIGHT_MAP_PATH
+
+
 class World:
     def __init__(self):
         self.day_map = pygame.image.load(DAY_MAP_PATH).convert()

@@ -19,17 +19,31 @@ from .settings import (
 
 
 class NPC:
-    def __init__(self, name, x, y, is_criminal=False):
+    def __init__(self, name, x, y, is_criminal=False, image_path=None):
         self.name = name
         self.rect = pygame.Rect(x, y, NPC_SIZE, NPC_SIZE)
         self.is_criminal = is_criminal
         self.is_scanned = False
+        self.image = self.load_image(image_path)
         self.dx = random.choice([-1, 0, 1])
         self.dy = random.choice([-1, 0, 1])
         self.look_dx = 0
         self.look_dy = 1
         self.move_timer = 0
         self.is_watching = False
+
+    def load_image(self, image_path):
+        if not image_path:
+            return None
+
+        try:
+            image = pygame.image.load(image_path).convert_alpha()
+        except pygame.error:
+            return None
+
+        # сохраняем пропорции спрайта и подгоняем высоту под старый квадрат
+        width = int(image.get_width() * (NPC_SIZE / image.get_height()))
+        return pygame.transform.scale(image, (width, NPC_SIZE))
 
     def update(self, is_night=False):
         if self.is_watching:
@@ -130,7 +144,13 @@ class NPC:
     def draw(self, screen, font, camera_x, camera_y):
         draw_rect = self.rect.move(-camera_x, -camera_y)
 
-        pygame.draw.rect(screen, NPC_COLOR, draw_rect)
+        if self.image:
+            # ставим спрайт по центру старого прямоугольника
+            image_x = draw_rect.centerx - self.image.get_width() // 2
+            image_y = draw_rect.bottom - self.image.get_height()
+            screen.blit(self.image, (image_x, image_y))
+        else:
+            pygame.draw.rect(screen, NPC_COLOR, draw_rect)
         name_color = self.get_name_color()
         name_text = font.render(self.name, True, name_color)
         text_x = draw_rect.centerx - name_text.get_width() // 2
