@@ -35,15 +35,15 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
         self.world = World()
-        self.player = Player(135, 135)
+        self.player = self.create_player()
         self.font = pygame.font.SysFont("arial", 18)
         self.title_font = pygame.font.SysFont("arial", 46)
         self.big_font = pygame.font.SysFont("arial", 64)
 
         self.scanner_ui = ScannerUI()
         self.daynight = DayNightManager()
-        self.house = House(567, 621, 162, 135)
-        self.boat = Boat(365, 1310, 162, 81)
+        self.house = House(675, 800, 50, 20)
+        self.boat = Boat(300, 260, 81, 162)
         self.npcs = []
         self.evidences = []
         self.carried_evidence = 0
@@ -60,6 +60,10 @@ class Game:
         self.outro_active = False
         self.outro_screen = StoryScreen("кодекс ночи", OUTRO_TEXT, "SPACE - начать заново")
         self.spawn_npcs()
+
+    def create_player(self):
+        # ставим игрока в центр мира
+        return Player(WORLD_WIDTH // 2, WORLD_HEIGHT // 2)
 
     def run(self):
         while self.running:
@@ -150,7 +154,7 @@ class Game:
         self.day_screen.show(self.daynight.night)
 
     def restart_game(self):
-        self.player = Player(135, 135)
+        self.player = self.create_player()
         self.scanner_ui.close()
         self.daynight = DayNightManager()
         self.evidences = []
@@ -275,13 +279,11 @@ class Game:
         if self.daynight.is_night():
             npc = self.get_npc_that_sees_player()
             if npc:
-                npc.watch_point(self.player.rect.centerx, self.player.rect.centery)
                 self.add_suspicion(dt, SUSPICION_TIME)
                 return
 
             npc, evidence = self.get_npc_that_sees_evidence()
             if npc and evidence:
-                npc.watch_point(evidence.rect.centerx, evidence.rect.centery)
                 self.add_suspicion(dt, EVIDENCE_SUSPICION_TIME)
 
     def get_npc_that_sees_player(self):
@@ -401,9 +403,6 @@ class Game:
             camera_y,
             self.daynight.is_night()
         )
-        self.house.draw_debug(self.screen, camera_x, camera_y)
-        self.boat.draw_debug(self.screen, camera_x, camera_y)
-
         if self.daynight.is_night():
             for npc in self.npcs:
                 npc.draw_vision(self.screen, camera_x, camera_y)

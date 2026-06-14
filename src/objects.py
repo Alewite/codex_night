@@ -12,11 +12,6 @@ class House:
         zone = self.rect.inflate(INTERACTION_DISTANCE, INTERACTION_DISTANCE)
         return zone.colliderect(player.rect)
 
-    def draw_debug(self, screen, camera_x, camera_y):
-        # рисуем дом с учетом камеры
-        draw_rect = self.rect.move(-camera_x, -camera_y)
-        pygame.draw.rect(screen, (255, 255, 0), draw_rect, 2)
-
 
 class Boat:
     def __init__(self, x, y, width, height):
@@ -26,11 +21,6 @@ class Boat:
         # расширяем зону яхты для взаимодействия
         zone = self.rect.inflate(INTERACTION_DISTANCE, INTERACTION_DISTANCE)
         return zone.colliderect(player.rect)
-
-    def draw_debug(self, screen, camera_x, camera_y):
-        # рисуем яхту с учетом камеры
-        draw_rect = self.rect.move(-camera_x, -camera_y)
-        pygame.draw.rect(screen, (0, 180, 255), draw_rect, 2)
 
 
 class Evidence:

@@ -10,12 +10,11 @@ from .settings import (
     RED,
     INTERACTION_DISTANCE,
     NPC_SPEED,
-    WORLD_WIDTH,
-    WORLD_HEIGHT,
     VISION_LENGTH,
     VISION_WIDTH,
     VISION_COLOR,
 )
+from .collisions import move_with_collisions
 
 
 class NPC:
@@ -30,7 +29,6 @@ class NPC:
         self.look_dx = 0
         self.look_dy = 1
         self.move_timer = 0
-        self.is_watching = False
 
     def load_image(self, image_path):
         if not image_path:
@@ -46,9 +44,6 @@ class NPC:
         return pygame.transform.scale(image, (width, NPC_SIZE))
 
     def update(self, is_night=False):
-        if self.is_watching:
-            return
-
         self.move_timer += 1
         if self.move_timer >= 60:
             # случайно выбираем направление движения npc
@@ -64,19 +59,12 @@ class NPC:
         if is_night:
             speed = max(1, NPC_SPEED // 2)
 
-        # двигаем npc в выбранном направлении
-        self.rect.x += self.dx * speed
-        self.rect.y += self.dy * speed
-
-        # не выпускаем npc за границы мира
-        if self.rect.left < 0:
-            self.rect.left = 0
-        if self.rect.right > WORLD_WIDTH:
-            self.rect.right = WORLD_WIDTH
-        if self.rect.top < 0:
-            self.rect.top = 0
-        if self.rect.bottom > WORLD_HEIGHT:
-            self.rect.bottom = WORLD_HEIGHT
+        # двигаем npc с проверкой стен и воды
+        blocked = move_with_collisions(self.rect, self.dx, self.dy, speed)
+        if blocked:
+            # выбираем новое направление если npc уперся в зону
+            self.dx = random.choice([-1, 0, 1])
+            self.dy = random.choice([-1, 0, 1])
 
     def scan(self):
         self.is_scanned = True
@@ -113,13 +101,6 @@ class NPC:
         side_distance = abs(target_x * -look_y + target_y * look_x)
         cone_width = (forward_distance / VISION_LENGTH) * (VISION_WIDTH / 2)
         return side_distance <= cone_width
-
-    def watch_point(self, x, y):
-        self.is_watching = True
-        self.dx = 0
-        self.dy = 0
-        self.look_dx = x - self.rect.centerx
-        self.look_dy = y - self.rect.centery
 
     def draw_vision(self, screen, camera_x, camera_y):
         look_x, look_y = self.get_look_vector()

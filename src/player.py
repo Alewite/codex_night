@@ -1,6 +1,7 @@
 import pygame
 
-from .settings import PLAYER_SIZE, PLAYER_SPEED, GREEN, WORLD_WIDTH, WORLD_HEIGHT, PLAYER_IMAGE_PATH
+from .settings import PLAYER_SIZE, PLAYER_SPEED, GREEN, PLAYER_IMAGE_PATH
+from .collisions import move_with_collisions
 
 
 class Player:
@@ -19,19 +20,8 @@ class Player:
         return pygame.transform.scale(image, (width, PLAYER_SIZE))
 
     def move(self, dx, dy):
-        # двигаем игрока по осям x и y
-        self.rect.x += dx * PLAYER_SPEED
-        self.rect.y += dy * PLAYER_SPEED
-
-        # не выпускаем игрока за границы мира
-        if self.rect.left < 0:
-            self.rect.left = 0
-        if self.rect.right > WORLD_WIDTH:
-            self.rect.right = WORLD_WIDTH
-        if self.rect.top < 0:
-            self.rect.top = 0
-        if self.rect.bottom > WORLD_HEIGHT:
-            self.rect.bottom = WORLD_HEIGHT
+        # двигаем игрока с проверкой стен и воды
+        move_with_collisions(self.rect, dx, dy, PLAYER_SPEED)
 
     def draw(self, screen, camera_x, camera_y):
         # смещаем игрока относительно камеры
