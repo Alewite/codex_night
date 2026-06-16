@@ -14,6 +14,8 @@ from .settings import (
     MAX_NIGHTS,
     SUSPICION_TIME,
     EVIDENCE_SUSPICION_TIME,
+    INTRO_AUDIO_PATH,
+    OUTRO_AUDIO_PATH,
 )
 from .player import Player
 from .world import World
@@ -24,6 +26,7 @@ from .npc_data import create_npcs_for_night
 from .suspicion import Suspicion
 from .story import StoryScreen, INTRO_TEXT, OUTRO_TEXT
 from .day_screen import DayScreen
+from .menu import MenuScreen
 
 
 class Game:
@@ -55,10 +58,13 @@ class Game:
         self.message = ""
         self.last_time = time.monotonic()
         self.day_screen = DayScreen()
+        self.menu_active = True
+        self.menu_screen = MenuScreen()
         self.intro_active = True
-        self.intro_screen = StoryScreen("кодекс ночи", INTRO_TEXT, "SPACE - начать игру")
+        self.intro_started = False
+        self.intro_screen = StoryScreen("кодекс ночи", INTRO_TEXT, "SPACE - начать игру", INTRO_AUDIO_PATH)
         self.outro_active = False
-        self.outro_screen = StoryScreen("кодекс ночи", OUTRO_TEXT, "SPACE - начать заново")
+        self.outro_screen = StoryScreen("кодекс ночи", OUTRO_TEXT, "SPACE - начать заново", OUTRO_AUDIO_PATH)
         self.spawn_npcs()
 
     def create_player(self):
@@ -87,11 +93,16 @@ class Game:
             if event.type == pygame.QUIT:
                 self.running = False
 
+            if self.menu_active:
+                self.handle_menu_event(event)
+                continue
+
             if event.type == pygame.KEYDOWN:
                 if self.intro_active:
                     if event.key == pygame.K_SPACE:
                         self.close_intro()
                     if event.key == pygame.K_ESCAPE:
+                        self.intro_screen.stop_audio()
                         self.running = False
                     continue
 
@@ -99,6 +110,7 @@ class Game:
                     if event.key == pygame.K_SPACE:
                         self.restart_game()
                     if event.key == pygame.K_ESCAPE:
+                        self.outro_screen.stop_audio()
                         self.running = False
                     continue
 
@@ -121,7 +133,28 @@ class Game:
                     if self.scanner_ui.active:
                         self.scanner_ui.close()
                 if event.key == pygame.K_ESCAPE:
-                    self.running = False
+                    self.open_menu()
+
+    def handle_menu_event(self, event):
+        action = self.menu_screen.handle_event(event)
+
+        if action == "play":
+            self.close_menu()
+        elif action == "exit":
+            self.running = False
+
+    def open_menu(self):
+        self.menu_active = True
+        self.scanner_ui.close()
+
+    def close_menu(self):
+        self.menu_active = False
+        self.last_time = time.monotonic()
+
+        if self.intro_active and not self.intro_started:
+            # запускаем печать интро только после меню
+            self.intro_screen.restart()
+            self.intro_started = True
 
     def handle_action(self):
         if self.game_over or self.game_finished:
@@ -149,11 +182,14 @@ class Game:
             self.scan_near_npc()
 
     def close_intro(self):
+        self.intro_screen.stop_audio()
         self.intro_active = False
         self.last_time = time.monotonic()
         self.day_screen.show(self.daynight.night)
 
     def restart_game(self):
+        self.intro_screen.stop_audio()
+        self.outro_screen.stop_audio()
         self.player = self.create_player()
         self.scanner_ui.close()
         self.daynight = DayNightManager()
@@ -248,6 +284,9 @@ class Game:
         now = time.monotonic()
         dt = min(now - self.last_time, 0.1)
         self.last_time = now
+
+        if self.menu_active:
+            return
 
         if self.intro_active or self.outro_active:
             return
@@ -380,6 +419,11 @@ class Game:
                 return
 
     def draw(self):
+        if self.menu_active:
+            self.menu_screen.draw(self.screen, self.title_font, self.font)
+            pygame.display.flip()
+            return
+
         if self.intro_active:
             self.intro_screen.draw(self.screen, self.title_font, self.font)
             pygame.display.flip()

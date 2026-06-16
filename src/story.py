@@ -1,21 +1,24 @@
+import os
 import time
+import wave
 
-from .settings import BLACK, WHITE, SCREEN_WIDTH, SCREEN_HEIGHT, INTRO_TEXT_SPEED
+import pygame
+
+from .settings import BLACK, WHITE, SCREEN_WIDTH, SCREEN_HEIGHT, INTRO_TEXT_SPEED, STORY_TEXT_SPEED
 
 
 INTRO_TEXT = (
     "Эта игра вдохновлена атмосферой сериала Декстер.\n\n"
     "Ты живешь по кодексу ночи. Днем город кажется спокойным, "
     "но среди обычных людей каждый день появляется один преступник.\n\n"
-    "Днем подходи к npc и нажимай E, чтобы сканировать их. "
+    "Днем нужно подходить к жителям города и нажимать E, чтобы сканировать их. "
     "Имя мирного станет зеленым, имя преступника станет красным.\n\n"
-    "Ночью устраняй только просканированного преступника клавишей F. "
+    "Ночью устрани только просканированного преступника клавишей F. "
     "После этого забери улику, отнеси ее к яхте и сбрось.\n\n"
-    "Не попадайся в конусы зрения npc ночью. Подозреваемость копится всю игру. "
-    "Если она дойдет до 100%, тебя заметят.\n\n"
-    "Всего есть 5 ночей. Каждую ночь появляются новые 5 npc, "
+    "Не попадайся в поле зрения жителей ночью. Подозреваемость копится всю игру. "
+    "Если она дойдет до 100%, тебя рассекретят.\n\n"
+    "Всего есть 5 ночей. Каждую ночь появляются новые 5 жителей, "
     "и среди них один новый преступник.\n\n"
-    "SPACE - пропустить"
 )
 
 OUTRO_TEXT = (
@@ -27,19 +30,64 @@ OUTRO_TEXT = (
     "Пятеро исчезли. Пять следов ушли в воду. "
     "Город получил еще один шанс проснуться без страха.\n\n"
     "Иногда порядок выглядит как обычный рассвет.\n\n"
-    "SPACE - начать заново"
 )
 
 
 class StoryScreen:
-    def __init__(self, title, text, hint):
+    def __init__(self, title, text, hint, audio_path=None):
         self.title = title
         self.text = text
         self.hint = hint
+        self.audio_path = audio_path
+        self.audio_duration = self.get_audio_duration()
+        self.text_speed = self.get_text_speed()
+        self.audio_playing = False
         self.start_time = time.monotonic()
+
+    def get_audio_duration(self):
+        if not self.audio_path or not os.path.exists(self.audio_path):
+            return 0
+
+        try:
+            with wave.open(self.audio_path, "rb") as audio_file:
+                return audio_file.getnframes() / audio_file.getframerate()
+        except wave.Error:
+            return 0
+
+    def get_text_speed(self):
+        if self.audio_duration > 0:
+            return STORY_TEXT_SPEED
+
+        return INTRO_TEXT_SPEED
 
     def restart(self):
         self.start_time = time.monotonic()
+        self.stop_audio()
+        self.play_audio()
+
+    def play_audio(self):
+        if not self.audio_path or not os.path.exists(self.audio_path):
+            return
+
+        try:
+            if not pygame.mixer.get_init():
+                pygame.mixer.init()
+            pygame.mixer.music.load(self.audio_path)
+            pygame.mixer.music.play()
+            self.audio_playing = True
+        except pygame.error:
+            self.audio_playing = False
+
+    def stop_audio(self):
+        if not self.audio_playing:
+            return
+
+        try:
+            pygame.mixer.music.stop()
+        except pygame.error:
+            pass
+
+        self.audio_playing = False
 
     def wrap_text(self, text, font, max_width):
         lines = []
@@ -72,10 +120,12 @@ class StoryScreen:
         title_x = SCREEN_WIDTH // 2 - title.get_width() // 2
         screen.blit(title, (title_x, 70))
 
-        chars_count = int((time.monotonic() - self.start_time) * INTRO_TEXT_SPEED)
+        chars_count = int((time.monotonic() - self.start_time) * self.text_speed)
         visible_text = self.text[:chars_count]
         if chars_count < len(self.text):
             visible_text += "|"
+        else:
+            self.stop_audio()
 
         lines = self.wrap_text(visible_text, font, 760)
         y = 155
