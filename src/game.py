@@ -1,4 +1,5 @@
 import time
+import os
 
 import pygame
 from .settings import (
@@ -16,6 +17,10 @@ from .settings import (
     EVIDENCE_SUSPICION_TIME,
     INTRO_AUDIO_PATH,
     OUTRO_AUDIO_PATH,
+    DAY_SOUND_PATH,
+    NIGHT_SOUND_PATH,
+    SCANNER_SOUND_PATH,
+    KILL_SOUND_PATH,
 )
 from .player import Player
 from .world import World
@@ -65,7 +70,54 @@ class Game:
         self.intro_screen = StoryScreen("кодекс ночи", INTRO_TEXT, "SPACE - начать игру", INTRO_AUDIO_PATH)
         self.outro_active = False
         self.outro_screen = StoryScreen("кодекс ночи", OUTRO_TEXT, "SPACE - начать заново", OUTRO_AUDIO_PATH)
+        self.day_sound = self.load_sound(DAY_SOUND_PATH)
+        self.night_sound = self.load_sound(NIGHT_SOUND_PATH)
+        self.scanner_sound = self.load_sound(SCANNER_SOUND_PATH)
+        self.kill_sound = self.load_sound(KILL_SOUND_PATH)
+        self.phase_channel = None
         self.spawn_npcs()
+
+    def load_sound(self, path):
+        if not os.path.exists(path):
+            return None
+
+        try:
+            if not pygame.mixer.get_init():
+                pygame.mixer.init()
+            return pygame.mixer.Sound(path)
+        except pygame.error:
+            return None
+
+    def play_sound(self, sound):
+        if not sound:
+            return
+
+        try:
+            sound.play()
+        except pygame.error:
+            pass
+
+    def stop_phase_sound(self):
+        if self.phase_channel:
+            self.phase_channel.stop()
+            self.phase_channel = None
+
+    def play_phase_sound(self):
+        self.stop_phase_sound()
+
+        if self.daynight.is_night():
+            sound = self.night_sound
+        else:
+            sound = self.day_sound
+
+        if not sound:
+            return
+
+        try:
+            # запускаем звук дня или ночи по кругу
+            self.phase_channel = sound.play(-1)
+        except pygame.error:
+            self.phase_channel = None
 
     def create_player(self):
         # ставим игрока в центр мира
@@ -141,11 +193,13 @@ class Game:
         if action == "play":
             self.close_menu()
         elif action == "exit":
+            self.stop_phase_sound()
             self.running = False
 
     def open_menu(self):
         self.menu_active = True
         self.scanner_ui.close()
+        self.stop_phase_sound()
 
     def close_menu(self):
         self.menu_active = False
@@ -155,6 +209,8 @@ class Game:
             # запускаем печать интро только после меню
             self.intro_screen.restart()
             self.intro_started = True
+        elif not self.outro_active:
+            self.play_phase_sound()
 
     def handle_action(self):
         if self.game_over or self.game_finished:
@@ -186,10 +242,12 @@ class Game:
         self.intro_active = False
         self.last_time = time.monotonic()
         self.day_screen.show(self.daynight.night)
+        self.play_phase_sound()
 
     def restart_game(self):
         self.intro_screen.stop_audio()
         self.outro_screen.stop_audio()
+        self.stop_phase_sound()
         self.player = self.create_player()
         self.scanner_ui.close()
         self.daynight = DayNightManager()
@@ -205,8 +263,10 @@ class Game:
         self.last_time = time.monotonic()
         self.day_screen.show(self.daynight.night)
         self.spawn_npcs()
+        self.play_phase_sound()
 
     def finish_game(self):
+        self.stop_phase_sound()
         self.game_finished = True
         self.outro_active = True
         self.outro_screen.restart()
@@ -224,6 +284,7 @@ class Game:
     def change_phase_near_house(self):
         if self.daynight.is_day():
             self.daynight.change_phase()
+            self.play_phase_sound()
             self.message = ""
             return
 
@@ -237,6 +298,7 @@ class Game:
 
         if self.daynight.night < MAX_NIGHTS:
             self.daynight.change_phase()
+            self.play_phase_sound()
             self.spawn_npcs()
             self.day_screen.show(self.daynight.night)
             self.message = ""
@@ -254,6 +316,7 @@ class Game:
                 self.evidences.append(evidence)
                 self.npcs.remove(npc)
                 self.criminals_done += 1
+                self.play_sound(self.kill_sound)
                 self.message = "цель устранена"
                 break
 
@@ -278,6 +341,7 @@ class Game:
             if npc.is_near_player(self.player):
                 npc.scan()
                 self.scanner_ui.open(npc)
+                self.play_sound(self.scanner_sound)
                 break
 
     def update(self):

@@ -15,6 +15,10 @@ NPC_IMAGE_FOLDER = "assets/images/npc"
 EVIDENCE_IMAGE_PATH = "assets/images/evidence/evidence.png"
 INTRO_AUDIO_PATH = "assets/saunds/intro.WAV"
 OUTRO_AUDIO_PATH = "assets/saunds/outro.WAV"
+DAY_SOUND_PATH = "assets/saunds/day.mp3"
+NIGHT_SOUND_PATH = "assets/saunds/night.mp3"
+SCANNER_SOUND_PATH = "assets/saunds/scanner.mp3"
+KILL_SOUND_PATH = "assets/saunds/kill.mp3"
 FPS = 60
 # цвета
 BLACK = (0, 0, 0)
