@@ -8,8 +8,6 @@ from .settings import (
     FPS,
     WHITE,
     YELLOW,
-    GREEN,
-    RED,
     WORLD_WIDTH,
     WORLD_HEIGHT,
     MAX_NIGHTS,
@@ -408,7 +406,7 @@ class Game:
             self.message = "вас заметили"
 
     def draw_daynight_info(self):
-        text = self.font.render(self.daynight.get_text(), True, YELLOW)
+        text = self.font.render(self.daynight.get_text(), True, WHITE)
         self.screen.blit(text, (20, 20))
 
     def draw_night_overlay(self):
@@ -428,7 +426,7 @@ class Game:
         self.screen.blit(text, (20, 45))
 
     def draw_suspicion_info(self):
-        text = self.font.render(f"Подозреваемость: {self.suspicion.percent()}%", True, RED)
+        text = self.font.render(f"Подозреваемость: {self.suspicion.percent()}%", True, WHITE)
         x = SCREEN_WIDTH - text.get_width() - 20
         self.screen.blit(text, (x, 20))
 
@@ -436,13 +434,7 @@ class Game:
         if not self.message:
             return
 
-        color = WHITE
-        if self.game_finished:
-            color = GREEN
-        elif self.game_over:
-            color = RED
-
-        text = self.font.render(self.message, True, color)
+        text = self.font.render(self.message, True, WHITE)
         x = SCREEN_WIDTH // 2 - text.get_width() // 2
         self.screen.blit(text, (x, 75))
 

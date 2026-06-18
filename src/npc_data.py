@@ -2,7 +2,7 @@ import random
 
 import pygame
 from .npc import NPC
-from .settings import NPCS_PER_DAY, NPC_IMAGE_FOLDER, NPC_SIZE
+from .settings import NPCS_PER_DAY, NPC_IMAGE_FOLDER, NPC_SIZE, WORLD_WIDTH, WORLD_HEIGHT
 from .collisions import rect_collides, clamp_to_world
 
 
@@ -14,39 +14,30 @@ NPC_NAMES = [
     "Mila", "Anton", "Vera", "Roman", "Tina",
 ]
 
-NPC_POINTS = [
-    (540, 378),
-    (810, 473),
-    (338, 338),
-    (1107, 702),
-    (1458, 486),
-]
+def get_random_npc_point(used_rects):
+    rect = pygame.Rect(0, 0, NPC_SIZE, NPC_SIZE)
+    min_distance = NPC_SIZE * 2
 
+    # ищем случайную свободную точку на карте
+    for _ in range(500):
+        rect.x = random.randint(0, WORLD_WIDTH - NPC_SIZE)
+        rect.y = random.randint(0, WORLD_HEIGHT - NPC_SIZE)
+        clamp_to_world(rect)
 
-def get_safe_npc_point(x, y):
-    rect = pygame.Rect(x, y, NPC_SIZE, NPC_SIZE)
-    clamp_to_world(rect)
+        if rect_collides(rect):
+            continue
 
-    if not rect_collides(rect):
-        return rect.x, rect.y
+        too_close = False
+        for used_rect in used_rects:
+            distance = ((rect.centerx - used_rect.centerx) ** 2 + (rect.centery - used_rect.centery) ** 2) ** 0.5
+            if distance < min_distance:
+                too_close = True
+                break
 
-    step = NPC_SIZE
+        if not too_close:
+            return rect.x, rect.y
 
-    # ищем ближайшую свободную точку вокруг спавна
-    for radius in range(1, 16):
-        for offset_x in range(-radius, radius + 1):
-            for offset_y in range(-radius, radius + 1):
-                if abs(offset_x) != radius and abs(offset_y) != radius:
-                    continue
-
-                rect.x = x + offset_x * step
-                rect.y = y + offset_y * step
-                clamp_to_world(rect)
-
-                if not rect_collides(rect):
-                    return rect.x, rect.y
-
-    return x, y
+    return WORLD_WIDTH // 2, WORLD_HEIGHT // 2
 
 
 def create_npcs_for_night(night):
@@ -57,12 +48,14 @@ def create_npcs_for_night(night):
 
     criminal_name = random.choice(names)
     npcs = []
+    used_rects = []
 
     for index, name in enumerate(names):
-        x, y = NPC_POINTS[index]
-        x, y = get_safe_npc_point(x, y)
+        x, y = get_random_npc_point(used_rects)
         is_criminal = name == criminal_name
         image_path = f"{NPC_IMAGE_FOLDER}/npc_{start + index + 1}.png"
-        npcs.append(NPC(name, x, y, is_criminal, image_path))
+        npc = NPC(name, x, y, is_criminal, image_path)
+        npcs.append(npc)
+        used_rects.append(npc.rect.copy())
 
     return npcs

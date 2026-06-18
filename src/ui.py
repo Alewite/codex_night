@@ -42,9 +42,7 @@ class ScannerUI:
         status_color = RED if self.npc.is_criminal else GREEN
         name_text = font.render(f"Имя: {self.npc.name}", True, WHITE)
         status_text = font.render(f"Статус: {status}", True, status_color)
-        info_text = font.render("Информация получена после сканирования.", True, WHITE)
         close_text = font.render("RETURN - закрыть", True, WHITE)
         screen.blit(name_text, (panel_x + 30, panel_y + 40))
         screen.blit(status_text, (panel_x + 30, panel_y + 90))
-        screen.blit(info_text, (panel_x + 30, panel_y + 140))
         screen.blit(close_text, (panel_x + 30, panel_y + 190))
