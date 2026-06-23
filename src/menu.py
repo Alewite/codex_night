@@ -5,8 +5,10 @@ from .settings import SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, WHITE, PANEL_BORDER
 
 class MenuScreen:
     def __init__(self):
+
         button_width = 260
         button_height = 58
+
         button_x = SCREEN_WIDTH // 2 - button_width // 2
         self.play_rect = pygame.Rect(button_x, 330, button_width, button_height)
         self.exit_rect = pygame.Rect(button_x, 410, button_width, button_height)
@@ -17,7 +19,7 @@ class MenuScreen:
                 return "play"
             if event.key == pygame.K_ESCAPE:
                 return "exit"
-
+        # мышка и кнопка
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.play_rect.collidepoint(event.pos):
                 return "play"
@@ -27,7 +29,7 @@ class MenuScreen:
         return None
 
     def draw_button(self, screen, font, rect, text):
-        # рисуем кнопку меню
+
         pygame.draw.rect(screen, BLACK, rect)
         pygame.draw.rect(screen, PANEL_BORDER, rect, 2)
         label = font.render(text, True, WHITE)
@@ -36,6 +38,7 @@ class MenuScreen:
         screen.blit(label, (x, y))
 
     def draw(self, screen, title_font, font):
+
         screen.fill(BLACK)
 
         title = title_font.render("кодекс ночи", True, WHITE)

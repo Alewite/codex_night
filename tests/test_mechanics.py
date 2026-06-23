@@ -7,8 +7,8 @@ import pygame
 
 from src.collisions import BLOCK_ZONES, move_with_collisions, rect_collides
 from src.game import Game
-from src.npc_data import create_npcs_for_night
-from src.settings import MAX_NIGHTS, NPC_SIZE, SUSPICION_TIME
+from src.npc import create_npcs_for_day
+from src.settings import MAX_DAYS, NPC_SIZE, SUSPICION_TIME
 from src.suspicion import Suspicion
 
 
@@ -38,8 +38,8 @@ class MechanicsTest(unittest.TestCase):
         self.assertEqual(rect.x, old_x)
 
     def test_npcs_spawn_outside_collisions(self):
-        for night in range(1, MAX_NIGHTS + 1):
-            for npc in create_npcs_for_night(night):
+        for day in range(1, MAX_DAYS + 1):
+            for npc in create_npcs_for_day(day):
                 self.assertFalse(rect_collides(npc.rect))
 
     def test_suspicion_reaches_max(self):
@@ -54,7 +54,7 @@ class MechanicsTest(unittest.TestCase):
         game.carried_evidence = 2
         game.delivered_evidence = 1
 
-        game.deposit_evidence()
+        game.interactions.deposit_evidence()
 
         self.assertEqual(game.carried_evidence, 0)
         self.assertEqual(game.delivered_evidence, 3)
@@ -62,9 +62,9 @@ class MechanicsTest(unittest.TestCase):
     def test_game_finishes_after_last_evidence(self):
         game = Game()
         game.carried_evidence = 1
-        game.criminals_done = MAX_NIGHTS
+        game.criminals_done = MAX_DAYS
 
-        game.deposit_evidence()
+        game.interactions.deposit_evidence()
 
         self.assertTrue(game.game_finished)
         self.assertTrue(game.outro_active)

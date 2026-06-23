@@ -1,35 +1,29 @@
 import time
-import os
 
 import pygame
 from .settings import (
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
     FPS,
-    WHITE,
-    YELLOW,
     WORLD_WIDTH,
     WORLD_HEIGHT,
-    MAX_NIGHTS,
     SUSPICION_TIME,
     EVIDENCE_SUSPICION_TIME,
+    DAY_SCREEN_FRAMES,
     INTRO_AUDIO_PATH,
     OUTRO_AUDIO_PATH,
-    DAY_SOUND_PATH,
-    NIGHT_SOUND_PATH,
-    SCANNER_SOUND_PATH,
-    KILL_SOUND_PATH,
 )
 from .player import Player
 from .world import World
-from .ui import ScannerUI
+from .ui import ScannerUI, DayScreen, GameHUD
 from .daynight import DayNightManager
-from .objects import House, Boat, Evidence
-from .npc_data import create_npcs_for_night
+from .objects import House, Boat
+from .npc import NPCFactory, NPC_NAMES
 from .suspicion import Suspicion
 from .story import StoryScreen, INTRO_TEXT, OUTRO_TEXT
-from .day_screen import DayScreen
 from .menu import MenuScreen
+from .audio import AudioManager
+from .interactions import InteractionManager
 
 
 class Game:
@@ -46,99 +40,66 @@ class Game:
         self.title_font = pygame.font.SysFont("arial", 46)
         self.big_font = pygame.font.SysFont("arial", 64)
 
+        # ui и игровые менеджеры
         self.scanner_ui = ScannerUI()
+        self.hud = GameHUD()
         self.daynight = DayNightManager()
+        self.npc_factory = NPCFactory(NPC_NAMES)
+        self.interactions = InteractionManager(self)
+
         self.house = House(675, 800, 50, 20)
         self.boat = Boat(300, 260, 81, 162)
+
         self.npcs = []
         self.evidences = []
         self.carried_evidence = 0
         self.delivered_evidence = 0
         self.criminals_done = 0
         self.suspicion = Suspicion()
+
         self.game_over = False
         self.game_finished = False
         self.message = ""
         self.last_time = time.monotonic()
+
+        # экран дня и меню
         self.day_screen = DayScreen()
+        self.day_screen_frames = 0
         self.menu_active = True
         self.menu_screen = MenuScreen()
+
+        # интро и аутро
         self.intro_active = True
         self.intro_started = False
         self.intro_screen = StoryScreen("кодекс ночи", INTRO_TEXT, "SPACE - начать игру", INTRO_AUDIO_PATH)
         self.outro_active = False
         self.outro_screen = StoryScreen("кодекс ночи", OUTRO_TEXT, "SPACE - начать заново", OUTRO_AUDIO_PATH)
-        self.day_sound = self.load_sound(DAY_SOUND_PATH)
-        self.night_sound = self.load_sound(NIGHT_SOUND_PATH)
-        self.scanner_sound = self.load_sound(SCANNER_SOUND_PATH)
-        self.kill_sound = self.load_sound(KILL_SOUND_PATH)
-        self.phase_channel = None
+
+        # менеджер звуков игры
+        self.audio = AudioManager()
         self.spawn_npcs()
 
-    def load_sound(self, path):
-        if not os.path.exists(path):
-            return None
-
-        try:
-            if not pygame.mixer.get_init():
-                pygame.mixer.init()
-            return pygame.mixer.Sound(path)
-        except pygame.error:
-            return None
-
-    def play_sound(self, sound):
-        if not sound:
-            return
-
-        try:
-            sound.play()
-        except pygame.error:
-            pass
-
-    def stop_phase_sound(self):
-        if self.phase_channel:
-            self.phase_channel.stop()
-            self.phase_channel = None
-
-    def play_phase_sound(self):
-        self.stop_phase_sound()
-
-        if self.daynight.is_night():
-            sound = self.night_sound
-        else:
-            sound = self.day_sound
-
-        if not sound:
-            return
-
-        try:
-            # запускаем звук дня или ночи по кругу
-            self.phase_channel = sound.play(-1)
-        except pygame.error:
-            self.phase_channel = None
-
     def create_player(self):
-        # ставим игрока в центр мира
         return Player(WORLD_WIDTH // 2, WORLD_HEIGHT // 2)
 
     def run(self):
+        # главный цикл игры
         while self.running:
             self.handle_events()
             self.update()
             self.draw()
             self.clock.tick(FPS)
 
-    def get_camera(self):
-        # держим игрока около центра экрана
+    def get_camera(self):        # центрируем камеру на игроке
         camera_x = self.player.rect.centerx - SCREEN_WIDTH // 2
         camera_y = self.player.rect.centery - SCREEN_HEIGHT // 2
 
-        # не выпускаем камеру за края большой карты
         camera_x = max(0, min(camera_x, WORLD_WIDTH - SCREEN_WIDTH))
         camera_y = max(0, min(camera_y, WORLD_HEIGHT - SCREEN_HEIGHT))
         return camera_x, camera_y
 
     def handle_events(self):
+        # обработка всех событий окна и клавиатуры
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
@@ -155,7 +116,6 @@ class Game:
                         self.intro_screen.stop_audio()
                         self.running = False
                     continue
-
                 if self.outro_active:
                     if event.key == pygame.K_SPACE:
                         self.restart_game()
@@ -164,21 +124,15 @@ class Game:
                         self.running = False
                     continue
 
-                # проверяем нажатие клавиши e
                 if event.key == pygame.K_e:
-                    self.handle_action()
-
-                # проверяем нажатие клавиши f
+                    self.interactions.handle_action()
                 if event.key == pygame.K_f:
-                    if self.daynight.is_night():
-                        self.eliminate_near_criminal()
+                    self.interactions.eliminate_near_criminal()
 
-                # начинаем игру заново после поражения
                 if event.key == pygame.K_SPACE:
                     if self.game_over:
                         self.restart_game()
 
-                # закрываем карточку или игру
                 if event.key == pygame.K_RETURN:
                     if self.scanner_ui.active:
                         self.scanner_ui.close()
@@ -191,61 +145,39 @@ class Game:
         if action == "play":
             self.close_menu()
         elif action == "exit":
-            self.stop_phase_sound()
+            self.audio.stop_phase_sound()
             self.running = False
 
     def open_menu(self):
         self.menu_active = True
         self.scanner_ui.close()
-        self.stop_phase_sound()
+        self.audio.stop_phase_sound()
 
     def close_menu(self):
         self.menu_active = False
         self.last_time = time.monotonic()
 
         if self.intro_active and not self.intro_started:
-            # запускаем печать интро только после меню
             self.intro_screen.restart()
             self.intro_started = True
         elif not self.outro_active:
-            self.play_phase_sound()
-
-    def handle_action(self):
-        if self.game_over or self.game_finished:
-            return
-
-        if self.scanner_ui.active:
-            return
-
-        # меняем день и ночь рядом с домом
-        if self.house.is_near_player(self.player):
-            self.change_phase_near_house()
-            return
-
-        # забираем улику рядом с игроком
-        if self.collect_near_evidence():
-            return
-
-        # сбрасываем все улики рядом с яхтой
-        if self.boat.is_near_player(self.player) and self.carried_evidence > 0:
-            self.deposit_evidence()
-            return
-
-        # днем сканируем ближайшего npc
-        if self.daynight.is_day():
-            self.scan_near_npc()
+            self.audio.play_phase_sound(self.daynight.is_night())
 
     def close_intro(self):
         self.intro_screen.stop_audio()
         self.intro_active = False
         self.last_time = time.monotonic()
-        self.day_screen.show(self.daynight.night)
-        self.play_phase_sound()
+        self.show_day_screen()
+        self.audio.play_phase_sound(self.daynight.is_night())
+
+    def show_day_screen(self):
+        self.day_screen.show(self.daynight.day)
+        self.day_screen_frames = DAY_SCREEN_FRAMES
 
     def restart_game(self):
         self.intro_screen.stop_audio()
         self.outro_screen.stop_audio()
-        self.stop_phase_sound()
+        self.audio.stop_phase_sound()
         self.player = self.create_player()
         self.scanner_ui.close()
         self.daynight = DayNightManager()
@@ -259,88 +191,19 @@ class Game:
         self.outro_active = False
         self.message = ""
         self.last_time = time.monotonic()
-        self.day_screen.show(self.daynight.night)
+        self.show_day_screen()
         self.spawn_npcs()
-        self.play_phase_sound()
+        self.audio.play_phase_sound(self.daynight.is_night())
 
     def finish_game(self):
-        self.stop_phase_sound()
+        self.audio.stop_phase_sound()
         self.game_finished = True
         self.outro_active = True
         self.outro_screen.restart()
         self.message = ""
 
     def spawn_npcs(self):
-        self.npcs = create_npcs_for_night(self.daynight.night)
-
-    def has_criminal(self):
-        for npc in self.npcs:
-            if npc.is_criminal:
-                return True
-        return False
-
-    def change_phase_near_house(self):
-        if self.daynight.is_day():
-            self.daynight.change_phase()
-            self.play_phase_sound()
-            self.message = ""
-            return
-
-        if self.has_criminal():
-            self.message = "сначала устраните преступника"
-            return
-
-        if self.evidences or self.carried_evidence > 0:
-            self.message = "сначала сбросьте улику"
-            return
-
-        if self.daynight.night < MAX_NIGHTS:
-            self.daynight.change_phase()
-            self.play_phase_sound()
-            self.spawn_npcs()
-            self.day_screen.show(self.daynight.night)
-            self.message = ""
-
-    def eliminate_near_criminal(self):
-        if self.game_over or self.game_finished:
-            return
-
-        if not self.daynight.is_night():
-            return
-
-        for npc in self.npcs[:]:
-            if npc.is_near_player(self.player) and npc.is_criminal and npc.is_scanned:
-                evidence = Evidence(npc.rect.centerx, npc.rect.centery)
-                self.evidences.append(evidence)
-                self.npcs.remove(npc)
-                self.criminals_done += 1
-                self.play_sound(self.kill_sound)
-                self.message = "цель устранена"
-                break
-
-    def collect_near_evidence(self):
-        for evidence in self.evidences[:]:
-            if evidence.is_near_player(self.player):
-                self.carried_evidence += 1
-                self.evidences.remove(evidence)
-                return True
-
-        return False
-
-    def deposit_evidence(self):
-        self.delivered_evidence += self.carried_evidence
-        self.carried_evidence = 0
-
-        if self.criminals_done >= MAX_NIGHTS:
-            self.finish_game()
-
-    def scan_near_npc(self):
-        for npc in self.npcs:
-            if npc.is_near_player(self.player):
-                npc.scan()
-                self.scanner_ui.open(npc)
-                self.play_sound(self.scanner_sound)
-                break
+        self.npcs = self.npc_factory.create_for_day(self.daynight.day)
 
     def update(self):
         now = time.monotonic()
@@ -354,9 +217,10 @@ class Game:
             return
 
         if self.day_screen.is_active(self.daynight.is_day()):
+            self.day_screen_frames -= 1
+            if self.day_screen_frames <= 0:
+                self.day_screen.hide()
             return
-
-        self.daynight.update()
 
         if self.game_over or self.game_finished:
             return
@@ -364,7 +228,6 @@ class Game:
         keys = pygame.key.get_pressed()
         dx = dy = 0
 
-        # читаем движение игрока с клавиш wasd
         if keys[pygame.K_w]:
             dy = -1
         if keys[pygame.K_s]:
@@ -374,6 +237,7 @@ class Game:
         if keys[pygame.K_d]:
             dx = 1
         self.player.move(dx, dy)
+
         for npc in self.npcs:
             npc.update(self.daynight.is_night())
 
@@ -388,6 +252,7 @@ class Game:
                 self.add_suspicion(dt, EVIDENCE_SUSPICION_TIME)
 
     def get_npc_that_sees_player(self):
+        # нпс который видит игрока
         for npc in self.npcs:
             if npc.can_see_player(self.player):
                 return npc
@@ -404,75 +269,6 @@ class Game:
         if self.suspicion.add(dt, time_limit):
             self.game_over = True
             self.message = "вас заметили"
-
-    def draw_daynight_info(self):
-        text = self.font.render(self.daynight.get_text(), True, WHITE)
-        self.screen.blit(text, (20, 20))
-
-    def draw_night_overlay(self):
-        if self.daynight.is_night():
-            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            overlay.set_alpha(120)
-            overlay.fill((0, 0, 0))
-            self.screen.blit(overlay, (0, 0))
-
-    def draw_evidence_info(self):
-        text = self.font.render(
-            f"Улики: {self.carried_evidence} | Сброшено: {self.delivered_evidence} | Цели: {self.criminals_done}/{MAX_NIGHTS}",
-            True,
-            WHITE,
-        )
-
-        self.screen.blit(text, (20, 45))
-
-    def draw_suspicion_info(self):
-        text = self.font.render(f"Подозреваемость: {self.suspicion.percent()}%", True, WHITE)
-        x = SCREEN_WIDTH - text.get_width() - 20
-        self.screen.blit(text, (x, 20))
-
-    def draw_message(self):
-        if not self.message:
-            return
-
-        text = self.font.render(self.message, True, WHITE)
-        x = SCREEN_WIDTH // 2 - text.get_width() // 2
-        self.screen.blit(text, (x, 75))
-
-    def draw_hints(self):
-        if self.scanner_ui.active:
-            return
-
-        if self.game_over:
-            self.scanner_ui.draw_hint(self.screen, self.font, "SPACE - начать заново")
-            return
-
-        if self.game_finished:
-            return
-
-        if self.house.is_near_player(self.player):
-            if self.daynight.is_night() and self.has_criminal():
-                self.scanner_ui.draw_hint(self.screen, self.font, "сначала устраните преступника")
-                return
-
-            self.scanner_ui.draw_hint(self.screen, self.font, "E - войти домой")
-            return
-
-        for evidence in self.evidences:
-            if evidence.is_near_player(self.player):
-                self.scanner_ui.draw_hint(self.screen, self.font, "E - взять улику")
-                return
-
-        if self.boat.is_near_player(self.player) and self.carried_evidence > 0:
-            self.scanner_ui.draw_hint(self.screen, self.font, "E - сбросить улику")
-            return
-
-        for npc in self.npcs:
-            if npc.is_near_player(self.player):
-                if self.daynight.is_night() and npc.is_criminal and npc.is_scanned:
-                    self.scanner_ui.draw_hint(self.screen, self.font, "F - устранить цель")
-                elif self.daynight.is_day():
-                    self.scanner_ui.draw_hint(self.screen, self.font, "E - сканировать")
-                return
 
     def draw(self):
         if self.menu_active:
@@ -511,14 +307,8 @@ class Game:
             npc.draw(self.screen, self.font, camera_x, camera_y)
         for evidence in self.evidences:
             evidence.draw(self.screen, camera_x, camera_y)
-
         self.player.draw(self.screen, camera_x, camera_y)
-
-        self.draw_daynight_info()
-        self.draw_evidence_info()
-        self.draw_suspicion_info()
-        self.draw_message()
-        self.draw_hints()
+        self.hud.draw(self.screen, self.font, self)
         self.scanner_ui.draw(self.screen, self.font)
 
         pygame.display.flip()

@@ -35,10 +35,12 @@ OUTRO_TEXT = (
 
 class StoryScreen:
     def __init__(self, title, text, hint, audio_path=None):
+        # сохраение текста, пути аудио и тд
         self.title = title
         self.text = text
         self.hint = hint
         self.audio_path = audio_path
+
         self.audio_duration = self.get_audio_duration()
         self.text_speed = self.get_text_speed()
         self.audio_playing = False
@@ -49,6 +51,7 @@ class StoryScreen:
             return 0
 
         try:
+            # читаем длину wav-файла
             with wave.open(self.audio_path, "rb") as audio_file:
                 return audio_file.getnframes() / audio_file.getframerate()
         except wave.Error:
@@ -116,10 +119,12 @@ class StoryScreen:
     def draw(self, screen, title_font, font):
         screen.fill(BLACK)
 
+        # заголовок
         title = title_font.render(self.title, True, WHITE)
         title_x = SCREEN_WIDTH // 2 - title.get_width() // 2
         screen.blit(title, (title_x, 70))
 
+        # эффект печатающегося текста
         chars_count = int((time.monotonic() - self.start_time) * self.text_speed)
         visible_text = self.text[:chars_count]
         if chars_count < len(self.text):
@@ -135,6 +140,7 @@ class StoryScreen:
             y += 28
 
         if chars_count >= len(self.text):
+            # подсказка внизу экрана после появления всего текста
             hint = font.render(self.hint, True, WHITE)
             hint_x = SCREEN_WIDTH // 2 - hint.get_width() // 2
             screen.blit(hint, (hint_x, SCREEN_HEIGHT - 55))

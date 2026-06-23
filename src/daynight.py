@@ -1,26 +1,18 @@
-import time
-from .settings import DAY, NIGHT, MAX_NIGHTS
+from .settings import DAY, NIGHT, MAX_DAYS
 
 
 class DayNightManager:
     def __init__(self):
         self.phase = DAY
-        self.night = 1
-        self.start_time = time.monotonic()
-
-    def update(self):
-        pass
+        self.day = 1
 
     def change_phase(self):
         if self.phase == DAY:
             self.phase = NIGHT
         else:
             self.phase = DAY
-            if self.night < MAX_NIGHTS:
-                self.night += 1
-
-        # запоминаем время старта новой фазы
-        self.start_time = time.monotonic()
+            if self.day < MAX_DAYS:
+                self.day += 1
 
     def is_day(self):
         return self.phase == DAY
@@ -29,4 +21,4 @@ class DayNightManager:
         return self.phase == NIGHT
 
     def get_text(self):
-        return f"{self.phase} {self.night}/{MAX_NIGHTS}"
+        return f"{self.phase} {self.day}/{MAX_DAYS}"

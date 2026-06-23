@@ -1,9 +1,10 @@
-# размеры экрана / настройка
+
 
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 700
 BASE_WORLD_WIDTH = 1447
 BASE_WORLD_HEIGHT = 1087
+
 MAP_SCALE = 1.46
 WORLD_WIDTH = int(BASE_WORLD_WIDTH * MAP_SCALE)
 WORLD_HEIGHT = int(BASE_WORLD_HEIGHT * MAP_SCALE)
@@ -13,6 +14,7 @@ NIGHT_MAP_PATH = "assets/images/maps/night_map.png"
 PLAYER_IMAGE_PATH = "assets/images/player/player.png"
 NPC_IMAGE_FOLDER = "assets/images/npc"
 EVIDENCE_IMAGE_PATH = "assets/images/evidence/evidence.png"
+
 INTRO_AUDIO_PATH = "assets/sounds/intro.WAV"
 OUTRO_AUDIO_PATH = "assets/sounds/outro.WAV"
 DAY_SOUND_PATH = "assets/sounds/day.mp3"
@@ -20,40 +22,39 @@ NIGHT_SOUND_PATH = "assets/sounds/night.mp3"
 SCANNER_SOUND_PATH = "assets/sounds/scanner.mp3"
 KILL_SOUND_PATH = "assets/sounds/kill.mp3"
 FPS = 60
+
 # цвета
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
-DARK_GRAY = (35, 35, 35)
 GREEN = (100, 220, 100)
 RED = (220, 60, 80)
-GRASS = (70, 130, 70)
-ROAD = (55, 55, 55)
-HOUSE_COLOR = (120, 80, 50)
-WATER = (40, 90, 150)
-# игрок
+
 PLAYER_SIZE = 56
-PLAYER_SPEED = 5
+PLAYER_SPEED = 2
 NPC_SIZE = 56
 NPC_COLOR = (200, 180, 90)
 INTERACTION_DISTANCE = 95
 NPC_SPEED = 1
-MAX_NIGHTS = 5
+
+MAX_DAYS = 5
 NPCS_PER_DAY = 5
 VISION_LENGTH = 243
 VISION_WIDTH = 135
 VISION_COLOR = (255, 230, 90, 70)
+
 SUSPICION_MAX = 100
 SUSPICION_TIME = 2
 EVIDENCE_SUSPICION_TIME = 10
-DAY_TEXT_TIME = 2
+
+DAY_SCREEN_FRAMES = 120
 INTRO_TEXT_SPEED = 45
 STORY_TEXT_SPEED = 16
+
 PANEL_COLOR = (25, 25, 25)
 PANEL_BORDER = (220, 220, 220)
-DAY_TIME = 60
-NIGHT_TIME = 45
+
 DAY = "ДЕНЬ"
 NIGHT = "НОЧЬ"
-YELLOW = (255, 255, 255)
+
 EVIDENCE_SIZE = 27
 EVIDENCE_COLOR = (180, 40, 40)

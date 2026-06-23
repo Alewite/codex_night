@@ -15,19 +15,17 @@ class Player:
         except pygame.error:
             return None
 
-        # сохраняем пропорции спрайта и подгоняем высоту под старый квадрат
         width = int(image.get_width() * (PLAYER_SIZE / image.get_height()))
         return pygame.transform.scale(image, (width, PLAYER_SIZE))
 
     def move(self, dx, dy):
-        # двигаем игрока с проверкой стен и воды
+        # проверка коллизий и движение игрока
         move_with_collisions(self.rect, dx, dy, PLAYER_SPEED)
 
     def draw(self, screen, camera_x, camera_y):
-        # смещаем игрока относительно камеры
+        # смещение игрока относительно камеры
         draw_rect = self.rect.move(-camera_x, -camera_y)
         if self.image:
-            # ставим спрайт по центру старого прямоугольника
             image_x = draw_rect.centerx - self.image.get_width() // 2
             image_y = draw_rect.bottom - self.image.get_height()
             screen.blit(self.image, (image_x, image_y))
